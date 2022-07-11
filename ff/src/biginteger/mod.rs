@@ -16,10 +16,10 @@ use ark_std::{
 };
 use num_bigint::BigUint;
 use zeroize::Zeroize;
-use serde_traitobject::{deserialize, serialize, Deserialize, Serialize};
 use std::{
-    error, fmt, marker,
+    error, fmt, marker, iter::Sum,
 };
+use ark_std::io::Cursor;
 use crate::{to_bytes};
 
 #[macro_use]
@@ -44,6 +44,8 @@ bigint_impl!(BigInteger384, 6);
 bigint_impl!(BigInteger448, 7);
 bigint_impl!(BigInteger768, 12);
 bigint_impl!(BigInteger832, 13);
+
+
 
 #[cfg(test)]
 mod tests;
@@ -75,6 +77,7 @@ pub trait BigInteger:
     + Into<BigUint>
     + serde::ser::Serialize
     + serde::de::DeserializeOwned
+    + Sum
 {
     /// Number of limbs.
     const NUM_LIMBS: usize;

@@ -3,8 +3,8 @@ use ark_serialize::{
     CanonicalSerializeWithFlags, SWFlags, SerializationError,
 };
 use ark_std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
+    fmt::{Display, Formatter, Result as FmtResult, self},
+    io::{Read, Result as IoResult, Write, Cursor},
     marker::PhantomData,
     ops::{Add, AddAssign, MulAssign, Neg, Sub, SubAssign},
     vec::Vec,
@@ -25,6 +25,7 @@ use ark_std::rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -291,6 +292,7 @@ impl<'a, P: Parameters> core::iter::Sum<&'a Self> for GroupAffine<P> {
             .into()
     }
 }
+
 
 /// Jacobian coordinates for a point on an elliptic curve in short Weierstrass form,
 /// over the base field `P::BaseField`. This struct implements arithmetic
@@ -905,4 +907,124 @@ where
     fn to_field_elements(&self) -> Option<Vec<ConstraintF>> {
         GroupAffine::from(*self).to_field_elements()
     }
+}
+
+impl<P: Parameters> serde::ser::Serialize for GroupAffine<P> {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        //let buf_size = GroupAffine::<P>::zero().serialized_size();
+        let buf_size = self.serialized_size();
+        let mut serialized: Vec<u8> = vec![0; buf_size];
+        let mut cursor = Cursor::new(&mut serialized[..]);
+        <GroupAffine<P> as CanonicalSerialize>::serialize(&(*self), cursor);
+        serializer.serialize_bytes(&serialized[..])
+    }
+}
+
+impl<'de, P: Parameters> serde::de::Deserialize<'de> for GroupAffine<P> {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        
+        struct GroupAffineVisitor<P: Parameters> {
+            marker: PhantomData<fn() -> GroupAffine<P>>
+        };
+
+        impl<P: Parameters> GroupAffineVisitor<P> {
+            fn new() -> Self {
+                GroupAffineVisitor {
+                    marker: PhantomData
+                }
+            }
+        }
+
+        impl<'de, P: Parameters> serde::de::Visitor<'de> for GroupAffineVisitor<P>
+        {
+            type Value = GroupAffine<P>;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a byte string")
+            }
+
+            #[inline]
+            fn visit_byte_buf<E: serde::de::Error>(
+                self,
+                value: Vec<u8>,
+            ) -> Result<GroupAffine<P>, E> {
+                //Ok($name::from_bits(value))
+                //let c: &[u8] = &value;
+                //Ok(FromBytes::read(c).unwrap())
+                let mut cursor = Cursor::new(&value[..]);
+                Ok(GroupAffine::<P>::deserialize(&mut cursor).unwrap())
+            }
+
+        }
+        deserializer.deserialize_byte_buf(GroupAffineVisitor::new())
+    }
+
+}
+
+impl<P: Parameters> serde::ser::Serialize for GroupProjective<P> {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        //let buf_size = GroupAffine::<P>::zero().serialized_size();
+        let buf_size = self.serialized_size();
+        let mut serialized: Vec<u8> = vec![0; buf_size];
+        let mut cursor = Cursor::new(&mut serialized[..]);
+        <GroupProjective<P> as CanonicalSerialize>::serialize(&(*self), cursor);
+        serializer.serialize_bytes(&serialized[..])
+    }
+}
+
+impl<'de, P: Parameters> serde::de::Deserialize<'de> for GroupProjective<P> {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        
+        struct GroupProjectiveVisitor<P: Parameters> {
+            marker: PhantomData<fn() -> GroupProjective<P>>
+        };
+
+        impl<P: Parameters> GroupProjectiveVisitor<P> {
+            fn new() -> Self {
+                GroupProjectiveVisitor {
+                    marker: PhantomData
+                }
+            }
+        }
+
+        impl<'de, P: Parameters> serde::de::Visitor<'de> for GroupProjectiveVisitor<P>
+        {
+            type Value = GroupProjective<P>;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a byte string")
+            }
+
+            #[inline]
+            fn visit_byte_buf<E: serde::de::Error>(
+                self,
+                value: Vec<u8>,
+            ) -> Result<GroupProjective<P>, E> {
+                //Ok($name::from_bits(value))
+                //let c: &[u8] = &value;
+                //Ok(FromBytes::read(c).unwrap())
+                let mut cursor = Cursor::new(&value[..]);
+                Ok(GroupProjective::<P>::deserialize(&mut cursor).unwrap())
+            }
+
+        }
+        deserializer.deserialize_byte_buf(GroupProjectiveVisitor::new())
+    }
+
 }

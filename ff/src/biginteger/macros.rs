@@ -397,8 +397,13 @@ macro_rules! bigint_impl {
             where
                 S: serde::Serializer,
             {
-                let c: &[u8] = &to_bytes![&self].unwrap();
-                serializer.serialize_bytes(c)
+                //let c: &[u8] = &to_bytes![&self].unwrap();
+                //serializer.serialize_bytes(c)
+                let buf_size = self.serialized_size();
+                let mut serialized: Vec<u8> = vec![0; buf_size];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                <$name as CanonicalSerialize>::serialize(&(*self), cursor);
+                serializer.serialize_bytes(&serialized[..])
             }
         }
         
@@ -423,8 +428,10 @@ macro_rules! bigint_impl {
                         value: Vec<u8>,
                     ) -> Result<$name, E> {
                         //Ok($name::from_bits(value))
-                        let c: &[u8] = &value;
-                        Ok(FromBytes::read(c).unwrap())
+                        //let c: &[u8] = &value;
+                        //Ok(FromBytes::read(c).unwrap())
+                        let mut cursor = Cursor::new(&value[..]);
+                        Ok($name::deserialize(&mut cursor).unwrap())
                     }
         
                 }
@@ -432,5 +439,55 @@ macro_rules! bigint_impl {
                 deserializer.deserialize_byte_buf(BigIntegerVisitor)
             }
         }
+
+        /*impl<'de> serde::de::Deserialize<'de> for &'de $name {
+            #[inline]
+            fn deserialize<D>(deserializer: D) -> Result<&'de $name, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                //Ok(&$name::new(&<$name as serde::Deserialize>::deserialize(deserializer).unwrap().map(|x|x.0)))
+                //<$name as serde::Deserialize>::deserialize(deserializer).map(Self)
+                //<$name as serde::Deserialize>::deserialize(deserializer).map(|s|s.0)
+                struct BigIntegerVisitor;
+        
+                impl<'de> serde::de::Visitor<'de> for BigIntegerVisitor {
+                    type Value = $name;
+        
+                    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        f.write_str("a byte string")
+                    }
+        
+                    #[inline]
+                    fn visit_byte_buf<E: serde::de::Error>(
+                        self,
+                        value: Vec<u8>,
+                    ) -> Result<$name, E> {
+                        //Ok($name::from_bits(value))
+                        let c: &[u8] = &value;
+                        Ok(FromBytes::read(c).unwrap())
+                    }
+        
+                }
+        
+                Ok(&$name::new(deserializer.deserialize_byte_buf(BigIntegerVisitor).unwrap().0))
+                //$name::new(deserializer.deserialize_byte_buf(BigIntegerVisitor).unwrap().0)
+            }
+        
+        }*/
+        impl Sum for $name {
+            fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+                let zero = $name::from(0u64);
+                iter.fold(
+                    zero,
+                    |a, b| {
+                        let mut c = a.clone();
+                        c.add_nocarry(&b); 
+                        c
+                    },
+                )
+            }
+        }
+        
     };
 }

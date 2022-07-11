@@ -147,6 +147,8 @@ pub trait ProjectiveCurve:
     + core::iter::Sum<Self>
     + for<'a> core::iter::Sum<&'a Self>
     + From<<Self as ProjectiveCurve>::Affine>
+    + serde::ser::Serialize
+    + serde::de::DeserializeOwned
 {
     const COFACTOR: &'static [u64];
     type ScalarField: PrimeField + SquareRootField;
@@ -242,6 +244,8 @@ pub trait AffineCurve:
     + core::iter::Sum<Self>
     + for<'a> core::iter::Sum<&'a Self>
     + From<<Self as AffineCurve>::Projective>
+    + serde::ser::Serialize
+    + serde::de::DeserializeOwned
 {
     const COFACTOR: &'static [u64];
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInt>;
